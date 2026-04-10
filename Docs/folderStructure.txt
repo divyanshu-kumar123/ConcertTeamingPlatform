@@ -1,0 +1,35 @@
+backend/
+├── src/
+│   ├── config/              # Environment variables, DB connection, Redis setup
+│   ├── core/                # Global middlewares (error handling, auth, rate limiting)
+│   ├── modules/             # Feature-based domains
+│   │   ├── auth/            # Auth routes, controllers, services, OTP logic
+│   │   ├── employees/       # Employee search, data retrieval, pagination
+│   │   ├── teams/           # Team formation, invitations, concurrent merge logic
+│   │   ├── admin/           # Admin dashboard, seat allocation, Excel export
+│   │   └── seating/         # Seating group configurations and capacity logic
+│   ├── jobs/                # BullMQ workers (OTP email sender)
+│   ├── models/              # Mongoose schemas (User, Team, Invitation, SeatingGroup)
+│   ├── utils/               # Helpers (hashers, Excel generators, loggers)
+│   └── server.js            # Entry point, Express app initialization
+├── package.json
+└── .env
+
+frontend/
+├── src/
+│   ├── assets/              # Static files, images, icons
+│   ├── components/          # Reusable UI (Buttons, Modals, Loaders, Inputs)
+│   ├── features/            # Feature-specific components and logic
+│   │   ├── authentication/  # Login, OTP verification forms
+│   │   ├── dashboard/       # Employee search, Invitation lists
+│   │   └── admin/           # Admin seating drag-and-drop, export tools
+│   ├── hooks/               # Custom React hooks (useDebounce, useAuth)
+│   ├── layouts/             # Page wrappers (Navbar, Sidebar, MainContent)
+│   ├── pages/               # Route endpoints (LoginPage, AdminPage)
+│   ├── services/            # Axios API instances, React Query configurations
+│   ├── store/               # Global state (Zustand or Redux for user session)
+│   ├── utils/               # Formatting, validation schemas (Zod/Yup)
+│   ├── App.jsx              # Main routing component
+│   └── main.jsx             # React DOM render
+├── package.json
+└── vite.config.js

@@ -1,0 +1,209 @@
+Use Case & Requirement Document
+Private Employee Concert – Seating Group & Allocation Management Platform
+ 
+1. Purpose of the Platform
+The purpose of this platform is to enable employees attending a private organizational concert to self‑organize into seating teams and later ensure proper seating allocation so that colleagues can sit together comfortably.
+The platform also supports administrative control to:
+Review all teams and individual employees.
+Assign seats intelligently and manually where required.
+Finalize and export seating arrangements.
+ 
+2. Scope of the Platform
+2.1 In Scope
+Employee registration using official employee codes.
+Employee‑driven invitation-based team formation.
+Visibility of team and invitation status.
+Handling uneven team sizes and individual participants.
+Centralized seat allocation by admin.
+Intelligent and manual seat assignment.
+Export of final seating data in Excel format.
+2.2 Out of Scope
+Ticket purchase and payments.
+Event access control or entry passes.
+Seat selection by employees.
+Event-day operational logistics.
+ 
+3. Pre‑Event Data Preparation
+3.1 Participant List
+A master Excel file will be provided containing all employees registered for the event.
+The file will include: 
+SAP ID (Employee Code)
+Employee Name
+Any additional identification fields if available
+Only employees from this list are eligible to use the platform.
+3.2 Seating Configuration
+There will be 8 fixed seating groups: 
+Group A, B, C, D, E, F, G, H
+Each seating group will have a predefined number of seats.
+Seating capacity cannot be exceeded under any condition.
+ 
+4. User Roles
+4.1 Employee
+Any registered event participant.
+Can form or join teams.
+Can send and accept invitations.
+Has no leadership or privilege over others.
+4.2 Admin
+Admin does not require registration through the employee flow.
+Admin access is created separately.
+Admin has full visibility and control over: 
+All teams
+Individual (ungrouped) employees
+Seating assignment
+Data export
+Admin access remains available even when team formation is closed.
+ 
+5. Employee Registration & Login (UPDATED)
+5.1 Registration Information
+During registration, each employee must provide: 
+SAP ID (Employee Code)
+Official or personal Email ID
+Password (created by the employee)
+5.2 Email Verification
+Email verification is mandatory for successful registration.
+After submitting registration details: 
+A one‑time verification code (OTP) will be sent to the provided email address.
+The employee must: 
+Enter the OTP to verify ownership of the email ID.
+Complete registration only after successful OTP verification.
+5.3 Verification Rules
+Registration is considered incomplete until email verification is successful.
+Only verified users can: 
+Log in to the platform
+Search employees
+Send or receive invitations
+OTP is: 
+Valid for a limited time
+Required only during initial registration or email change (if allowed later)
+5.4 Email Uniqueness
+One email ID can be linked to only one SAP ID.
+An SAP ID cannot be registered with multiple email IDs.
+ 
+5.5 Login Rules (Unchanged with Clarification)
+Employees log in using: 
+SAP ID
+Password
+Login is allowed only after successful email verification.
+ 
+5.6 Admin Exemption
+Admin access: 
+Does not require employee registration.
+Does not require email OTP verification through the employee flow.
+Admin credentials are created and managed separately.
+ 
+ 
+6. Employee Search
+6.1 Search Options
+Employees can search other registered participants by: 
+SAP ID
+Employee Name
+6.2 Search Assistance
+Search results should appear dynamically as the user types.
+Only registered participants should appear in suggestions.
+Each result should clearly show name and SAP ID.
+ 
+7. Invitation & Team Formation
+7.1 Sending Invitations
+Any employee can send invitations to one or more employees.
+Invitations are for joining the same seating team.
+7.2 Receiving Invitations
+Employees can view received invitations after login.
+Invitation details include: 
+Sender name
+Sender SAP ID
+7.3 Accepting or Rejecting Invitations
+Employees can accept or reject invitations.
+Accepting an invitation merges both employees into one team.
+7.4 Team Expansion Rules
+Any team member can invite more employees.
+There is no team leader.
+Teams grow based purely on accepted invitations.
+ 
+8. Team Definition & Outcomes
+8.1 Team Structure
+A team consists of employees connected through accepted invitations.
+Teams may vary in size.
+8.2 Uneven Groups
+After team formation: 
+Some teams may be small or large.
+Some employees may remain individual, not part of any team.
+Individual employees must still be assigned seats later.
+ 
+9. Team Formation Closure
+Team formation is open for a defined period.
+After closure: 
+No new invitations can be sent or accepted by employees.
+Team structures become final for seating purposes.
+Admin access is not affected by this closure.
+ 
+10. Seat Allocation Overview
+10.1 Allocation Timing
+Seat allocation happens after team formation is completed.
+However, admin may initiate seat planning earlier.
+Employees will not see any seating or group information until team formation is officially closed and results are published.
+ 
+11. Admin Seat Allocation Responsibilities
+11.1 Admin Visibility
+Admin can view:
+All teams and their members
+All individual employees not in any team
+Seating group capacities
+Seating assigned and unassigned employees
+11.2 Intelligent Seat Allocation
+Admin can allocate seats based on:
+Team size
+Seating group capacity
+Best use of available seats
+Ensuring each team sits together in one group
+11.3 Manual Intervention
+Admin must be able to: 
+Manually assign teams or individuals to specific seating groups
+Adjust allocations if conflicts arise
+Manual intervention is necessary for: 
+Large teams
+Last-minute constraints
+Special seating decisions
+11.4 Allocation Rules
+No team is split across seating groups.
+Seating capacity must never be exceeded.
+Individual employees are placed where seats are available.
+If a team cannot fit anywhere: 
+Admin handles it manually.
+ 
+12. Employee Seat Visibility
+12.1 Before Seat Publication
+Employees can only see:
+Their team members
+Invitation status
+12.2 After Seat Publication
+Employees can see:
+Their assigned seating group (A–H)
+Members sitting with them
+ 
+13. Export & Reporting
+Admin can export final seating arrangements to Excel.
+Exported data should include: 
+SAP ID
+Employee Name
+Team identifier
+Seating Group
+ 
+14. Audit & Traceability
+Platform should maintain history of: 
+Invitations sent and accepted
+Team formations
+Seat allocations
+This ensures transparency and dispute resolution.
+ 
+15. Success Criteria
+The platform is successful if:
+Employees form teams smoothly without confusion.
+Individual employees are handled properly.
+Seating is allocated without splitting teams.
+Seating capacity is fully respected.
+Admin can manage, adjust, and export seating easily.
+ 
+16. Assumptions
+Seating capacities are finalized before allocation.
+Team formation duration is clearly communicated.
+Admin decisions are final for seating. 

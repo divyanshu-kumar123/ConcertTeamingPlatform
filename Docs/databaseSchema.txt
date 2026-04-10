@@ -1,0 +1,48 @@
+1. Users Collection
+This collection stores both pre-loaded employee data and active registered users.
+
+Fields: _id (ObjectId), sapId (String, required, unique), name (String, required), email (String, sparse, unique), password (String, hashed, null before registration), role (String, enum: ['EMPLOYEE', 'ADMIN'], default: 'EMPLOYEE'), isVerified (Boolean, default: false), teamId (ObjectId, reference: 'Team', default: null), seatingGroupId (ObjectId, reference: 'SeatingGroup', default: null), createdAt (Date), updatedAt (Date).
+
+Indexes: * { sapId: 1 } (Unique index to ensure no duplicate employee codes)
+
+{ email: 1 } (Unique, Sparse index so null emails from pre-loaded data don't cause duplicate key errors)
+
+{ name: "text", sapId: "text" } (Compound text index for highly optimized, debounced search queries)
+
+{ teamId: 1 } (To quickly fetch all users in a specific team)
+
+2. OTPs Collection
+It is best practice to keep OTPs out of the main User collection to prevent bloating and to utilize MongoDB's automatic deletion (TTL).
+
+Fields: _id (ObjectId), sapId (String, required), email (String, required), otpHash (String, required), retryCount (Number, default: 0), expiresAt (Date, required), createdAt (Date).
+
+Indexes: * { sapId: 1 } (To quickly verify rate limiting and find the latest OTP for a user)
+
+{ expiresAt: 1 } (TTL Index set to expireAfterSeconds: 0. MongoDB will automatically delete the document when the current time hits expiresAt)
+
+3. Teams Collection
+This tracks the groups formed by accepted invitations. A single employee with no accepted invites will technically have no team (or a team of 1, depending on your merge logic preference; storing null in the User teamId for solo employees is more efficient).
+
+Fields: _id (ObjectId), members (Array of ObjectIds, reference: 'User'), seatingGroupId (ObjectId, reference: 'SeatingGroup', default: null), createdAt (Date), updatedAt (Date).
+
+Indexes: * { members: 1 } (Multikey index to quickly find which team a specific user belongs to)
+
+{ seatingGroupId: 1 } (To quickly retrieve all teams sitting in a specific group during admin export)
+
+4. Invitations Collection
+This acts as the ledger for the team formation phase.
+
+Fields: _id (ObjectId), senderId (ObjectId, reference: 'User', required), receiverId (ObjectId, reference: 'User', required), status (String, enum: ['PENDING', 'ACCEPTED', 'REJECTED'], default: 'PENDING'), createdAt (Date), updatedAt (Date).
+
+Indexes: * { receiverId: 1, status: 1 } (Compound index to quickly fetch all pending invitations for a logged-in user)
+
+{ senderId: 1, status: 1 } (To fetch the status of invites sent by the user)
+
+{ senderId: 1, receiverId: 1, status: 1 } (Partial Unique index where status is 'PENDING', preventing a user from spamming the same colleague with multiple active invites)
+
+5. SeatingGroups Collection
+This tracks the physical venue capacities and current occupancy.
+
+Fields: _id (ObjectId), name (String, enum: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], required, unique), capacity (Number, required), allocatedCount (Number, default: 0), createdAt (Date), updatedAt (Date).
+
+Indexes: * { name: 1 } (Unique index to prevent duplicate group letters)

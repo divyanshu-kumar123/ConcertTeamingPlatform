@@ -1,0 +1,213 @@
+End‑to‑End Development Flow (Scalable MERN Platform)
+High‑Level System Goals (Engineering View)
+Handle 7,000+ registered employees safely
+Avoid crashes during:
+Registration spikes
+OTP generation
+Search
+Invitation sending
+Maintain data consistency for team formation
+Allow admin‑controlled, conflict‑free seat allocation
+Ensure secure authentication & authorization
+SYSTEM PHASES
+The platform naturally divides into 5 phases:
+Pre‑Load & Configuration
+Registration & OTP Authentication
+Team Formation & Invitation Flow
+Team Formation Lock
+Seat Allocation & Export (Admin)
+I’ll walk through each phase in detail.
+PHASE 1: Pre‑Load & Configuration (Before Platform Opens)
+1. Participant Data Ingestion
+Upload Excel → parse into database
+Store:
+SAP ID
+Name
+Email (optional initially)
+Registration status = NOT_REGISTERED
+Index on:
+SAP ID (unique)
+Name (search optimization)
+✅ This ensures only valid SAP IDs can register
+2. Seating Configuration
+Insert seating groups:
+Group A → capacity X
+Group B → capacity Y
+…
+Seats are capacity tracked, not individually numbered
+3. Admin Account Setup
+Admin credentials created manually
+Stored separately from employees
+Admin can access system regardless of platform status
+PHASE 2: Registration & OTP Authentication
+This is the highest‑risk traffic phase, so we design it carefully.
+REGISTRATION FLOW
+Step 1: User enters SAP ID
+System checks:
+SAP ID exists in participant table
+SAP ID not already registered
+❌ If failed → block immediately (cheap DB query)
+Step 2: User enters Email + Password
+Validation:
+Email format
+Password rules
+One SAP ID → one Email
+Step 3: OTP Generation (Critical Design)
+OTP Design
+Generate 6‑digit numeric OTP
+Store:
+Hashed OTP
+Expiry timestamp (e.g., 5 minutes)
+Retry count
+OTP stored temporarily, not permanently
+OTP Delivery
+Send OTP via email service
+Email sending must be:
+Asynchronous
+Non‑blocking
+Use queue‑based sending to avoid crashes under load
+✅ This prevents:
+Email service rate‑limit failures
+App thread blocking
+Step 4: OTP Verification
+User submits OTP:
+Validate:
+OTP hash matches
+OTP not expired
+Retry count not exceeded
+✅ On success:
+Mark email as VERIFIED
+Mark user as REGISTERED
+❌ On failure:
+Increment retry count
+Lock OTP after max attempts
+Scalability Safeguards for OTP
+Limit OTP resend (cooldown timer)
+IP‑based throttling
+SAP‑ID‑based rate limiting
+✅ This is critical to survive 7,000 users safely.
+LOGIN FLOW
+SAP ID + Password
+Email must be verified
+Issue authentication token
+Lightweight token validation for every request
+PHASE 3: Team Formation & Invitation Flow
+This phase requires strong data consistency.
+EMPLOYEE SEARCH FLOW
+Indexed search on:
+SAP ID
+Name
+Suggestive results (debounced search)
+Return only:
+Registered users
+✅ Search is read‑heavy, so:
+Use pagination
+Limit result counts
+INVITATION FLOW
+Step 1: Send Invitation
+Checks:
+Sender exists
+Receiver exists
+Not already in same team
+Receiver not already invited by same sender
+Store:
+Sender SAP ID
+Receiver SAP ID
+Status = PENDING
+Step 2: Accept Invitation
+When receiver accepts:
+Merge both users into ONE team
+CRITICAL LOGIC: TEAM MERGE
+Every user has a teamId
+If:
+Both users have teams → merge teams
+One has team → add other
+Neither → create new team
+🧠 This prevents fragmented graphs and circular invites.
+Concurrency Safety
+Team merge must be atomic
+Use locking / transactions
+Prevent race conditions when many invitations accepted at once
+INDIVIDUAL USERS
+Users with no accepted invitations:
+Have teamId = NULL
+Treated as solo participants later
+PHASE 4: Team Formation Lock
+At cutoff time:
+Disable:
+Sending invitations
+Accepting invitations
+Freeze:
+Team structure
+Admin access remains active
+Employees:
+Cannot see seating yet
+Can still see their final team list
+PHASE 5: Seat Allocation (ADMIN CONTROLLED)
+ADMIN VIEW FLOW
+Admin dashboard shows:
+All teams sorted by size (DESC)
+Individual employees
+Seating group capacities
+Unallocated / allocated counts
+INTELLIGENT SEAT ALLOCATION LOGIC
+Automated Suggestion Flow
+Sort teams by size (largest first)
+For each team:
+Find smallest seating group that fits it
+Deduct capacity
+Repeat
+✅ This minimizes seat waste.
+MANUAL OVERRIDE FLOW
+Admin can:
+Drag/drop team into any group
+Move individuals manually
+Override automated logic
+System must:
+Validate capacity before saving
+Reject invalid allocations
+EARLY SEAT ALLOCATION RULE
+Admin may start seat allocation early
+Employees will NOT see results
+Results are published only after platform opens seating view
+FINAL SEAT PUBLISH
+One admin action publishes:
+Seating group to employees
+Employee portal now shows:
+Group name
+Team members
+EXPORT FLOW
+Admin exports Excel:
+SAP ID
+Name
+Team ID
+Seating Group
+Export must be:
+Read‑only snapshot
+Downloadable anytime
+NON‑FUNCTIONAL REQUIREMENTS (CRUCIAL FOR 7000 USERS)
+Performance
+Indexed DB queries
+Pagination everywhere
+Async email
+Stateless authentication
+Reliability
+Retry mechanisms for email
+Graceful failure handling
+Admin overrides always allowed
+Security
+Password hashing
+OTP hashing
+Token expiry
+Rate limits
+FINAL SYSTEM FLOW SUMMARY (ONE SCREEN)
+Load participants + seat config
+Employee registers → OTP → verified
+Login
+Search employees
+Send / accept invitations
+Teams auto‑merge
+Team formation closed
+Admin allocates seats (auto + manual)
+Publish seating
+Export Excel
