@@ -1,26 +1,57 @@
 const mongoose = require('mongoose');
 const { User, Team, Invitation } = require('../models');
 
-// @desc    Send an invitation to another employee
+// @desc    Send an invitation (By SAP ID) or Join Request (By Team ID)
 // @route   POST /api/invitations/send
 // @access  Private
 exports.sendInvitation = async (req, res) => {
   try {
-    const { receiverId } = req.body;
+    // We change this to 'targetId' because it can now be an SAP ID OR a Team ID
+    const { targetId } = req.body; 
     const senderId = req.user._id;
 
-    if (senderId.toString() === receiverId) {
+    if (!targetId) {
+      return res.status(400).json({ message: 'Please provide an SAP ID or Team ID.' });
+    }
+
+    let receiverId = null;
+
+    // --- SMART ROUTING LOGIC ---
+
+    // 1. Is it a Team ID? (Check if it's a valid 24-char MongoDB ID)
+    if (mongoose.Types.ObjectId.isValid(targetId)) {
+      const team = await Team.findById(targetId);
+      if (team) {
+        // Prevent sending request if already in THIS team
+        if (req.user.teamId && req.user.teamId.toString() === targetId) {
+          return res.status(400).json({ message: 'You are already a member of this team.' });
+        }
+        // To join a team, we send the invite to the first member of that team
+        receiverId = team.members[0];
+      }
+    }
+
+    // 2. Is it an SAP ID? (If it wasn't a Team ID, search the Users collection)
+    if (!receiverId) {
+      // Ensure we convert it to uppercase just in case they typed 'sap123'
+      const user = await User.findOne({ sapId: targetId.toUpperCase(), role: 'EMPLOYEE' });
+      if (user) {
+        receiverId = user._id;
+      }
+    }
+
+    // 3. If we still don't have a receiver, the input was completely invalid
+    if (!receiverId) {
+      return res.status(404).json({ message: 'No Employee or Team found with that ID.' });
+    }
+
+    // --- STANDARD SAFETY CHECKS ---
+
+    if (senderId.toString() === receiverId.toString()) {
       return res.status(400).json({ message: 'You cannot invite yourself.' });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(receiverId)) {
-      return res.status(400).json({ message: 'Invalid employee ID format.' });
-    }
-
     const receiver = await User.findById(receiverId);
-    if (!receiver || receiver.role !== 'EMPLOYEE') {
-      return res.status(404).json({ message: 'Employee not found.' });
-    }
 
     // Check if they are already in the same team
     if (req.user.teamId && receiver.teamId && req.user.teamId.toString() === receiver.teamId.toString()) {
@@ -36,19 +67,19 @@ exports.sendInvitation = async (req, res) => {
     });
 
     if (existingInvite) {
-      return res.status(400).json({ message: 'A pending invitation already exists between you two.' });
+      return res.status(400).json({ message: 'A pending request already exists between you and this target.' });
     }
 
+    // --- CREATE INVITATION ---
     const invitation = await Invitation.create({ senderId, receiverId });
 
-    res.status(201).json({ message: 'Invitation sent successfully!', invitation });
+    res.status(201).json({ message: 'Request sent successfully!', invitation });
   } catch (error) {
     console.error('Send Invite Error:', error);
-    // 11000 is the MongoDB duplicate key error (which our unique index catches)
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'You have already sent an invitation to this user.' });
+      return res.status(400).json({ message: 'You have already sent a request here.' });
     }
-    res.status(500).json({ message: 'Server error sending invitation.' });
+    res.status(500).json({ message: 'Server error sending request.' });
   }
 };
 
@@ -62,17 +93,25 @@ exports.acceptInvitation = async (req, res) => {
 
   try {
     const invitationId = req.params.id;
-    const receiverId = req.user._id; // The person clicking "Accept"
+    // FIX 1: Safely grab the ID whether your auth middleware uses ._id or .id
+    const receiverId = req.user._id || req.user.id; 
+
+    // FIX 2: Check the URL param to prevent Mongoose cast errors
+    if (!mongoose.Types.ObjectId.isValid(invitationId)) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: 'Invalid invitation ID format.' });
+    }
 
     const invitation = await Invitation.findOne({ _id: invitationId, receiverId, status: 'PENDING' }).session(session);
+    
     if (!invitation) {
       await session.abortTransaction();
       session.endSession();
       return res.status(404).json({ message: 'Invitation not found or already processed.' });
     }
-    if (!mongoose.Types.ObjectId.isValid(receiverId)) {
-      return res.status(400).json({ message: 'Invalid employee ID format.' });
-    }
+
+    // --- We removed the buggy 'isValid(receiverId)' check that was crashing your app! ---
 
     const sender = await User.findById(invitation.senderId).session(session);
     const receiver = await User.findById(receiverId).session(session);
@@ -157,7 +196,12 @@ exports.acceptInvitation = async (req, res) => {
 exports.rejectInvitation = async (req, res) => {
   try {
     const invitationId = req.params.id;
-    const receiverId = req.user._id;
+    // FIX: Safely grab the receiver ID here as well
+    const receiverId = req.user._id || req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(invitationId)) {
+      return res.status(400).json({ message: 'Invalid invitation ID format.' });
+    }
 
     const invitation = await Invitation.findOneAndUpdate(
       { _id: invitationId, receiverId, status: 'PENDING' },

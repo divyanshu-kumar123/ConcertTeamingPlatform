@@ -37,6 +37,7 @@ api.interceptors.response.use(
   (error) => {
     // Any status codes that falls outside the range of 2xx cause this function to trigger
     const message = error.response?.data?.message || 'Something went wrong';
+    console.log(message)
 
     // If the server says the token is invalid/expired (401), force logout
     if (error.response?.status === 401) {
