@@ -136,8 +136,8 @@ const Login = () => {
         {/* Note the added 'value' and 'onChange' props passed to InputField */}
         {mode === 'REGISTER_STEP_1' && (
           <form onSubmit={handleRequestOtp} className="space-y-2">
-            <InputField icon={User} label="SAP ID" type="text" name="sapId" placeholder="e.g. SAP12345" value={formData.sapId} onChange={handleInputChange} />
-            <InputField icon={Mail} label="Corporate Email" type="email" name="email" placeholder="your.email@company.com" value={formData.email} onChange={handleInputChange} />
+            <InputField icon={User} label="SAP ID" type="text" name="sapId" placeholder="e.g. 52111453" value={formData.sapId} onChange={handleInputChange} />
+            <InputField icon={Mail} label="Corporate Email" type="email" name="email" placeholder="your.email@hcltech.com" value={formData.email} onChange={handleInputChange} />
             <InputField icon={Lock} label="Create Password" type="password" name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} />
             <button type="submit" className="w-full mt-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm shadow-violet-200">
               Send OTP <ArrowRight size={18} />
@@ -159,7 +159,7 @@ const Login = () => {
 
         {mode === 'LOGIN' && (
           <form onSubmit={handleDirectLogin} className="space-y-2">
-            <InputField icon={User} label="SAP ID" type="text" name="sapId" placeholder="e.g. SAP12345" value={formData.sapId} onChange={handleInputChange} />
+            <InputField icon={User} label="SAP ID" type="text" name="sapId" placeholder="e.g. 52111453" value={formData.sapId} onChange={handleInputChange} />
             <InputField icon={Lock} label="Password" type="password" name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} />
             <button type="submit" className="w-full mt-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm shadow-violet-200">
               Login to Portal <ArrowRight size={18} />

@@ -56,7 +56,7 @@ const seedDatabase = async () => {
     ];
     await SeatingGroup.insertMany(groups);
 
- console.log('Creating Admin Account...');
+    console.log('Creating Admin Account...');
     
     // Hash the admin password
     const salt = await bcrypt.genSalt(10);
@@ -75,9 +75,14 @@ const seedDatabase = async () => {
     const dummyEmployees = [];
     
     for (let i = 0; i < 100; i++) {
+      const firstName = faker.person.firstName();
+      const lastName = faker.person.lastName();
+
       dummyEmployees.push({
-        sapId: `SAP${faker.string.numeric(5)}`,
-        name: faker.person.fullName(),
+        sapId: faker.string.numeric(8), // <-- Changed to exactly 8 digits
+        name: `${firstName} ${lastName}`,
+        // <-- Added unique email to satisfy the new required: true schema rule
+        email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@company.com`, 
         role: 'EMPLOYEE',
         isVerified: false
       });

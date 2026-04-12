@@ -21,20 +21,33 @@ exports.requestOtp = async (req, res) => {
       return res.status(404).json({ message: 'SAP ID not found in the pre-registered employee list.' });
     }
 
+    // ==========================================
+    // --- NEW SECURITY CHECK: VERIFY EMAIL ---
+    // ==========================================
+    const cleanInputEmail = email.trim().toLowerCase();
+    const dbEmail = user.email ? user.email.trim().toLowerCase() : null;
+
+    if (!dbEmail || dbEmail !== cleanInputEmail) {
+      return res.status(403).json({ 
+        message: 'Security Alert: The email provided does not match the official corporate email linked to this SAP ID.' 
+      });
+    }
+    // ==========================================
+
     // 2. Check if already verified
     if (user.isVerified) {
       return res.status(400).json({ message: 'User is already registered and verified. Please login.' });
     }
 
     // 3. Check if email is already taken by ANOTHER verified user
-    const emailExists = await User.findOne({ email, sapId: { $ne: sapId }, isVerified: true });
+    const emailExists = await User.findOne({ email: cleanInputEmail, sapId: { $ne: sapId }, isVerified: true });
     if (emailExists) {
       return res.status(400).json({ message: 'This email is already registered to another SAP ID.' });
     }
 
     // 4. Update user with email and hashed password (temporarily unverified)
     const salt = await bcrypt.genSalt(10);
-    user.email = email;
+    user.email = cleanInputEmail; // saved as clean lowercase
     user.password = await bcrypt.hash(password, salt);
     await user.save();
 
@@ -47,7 +60,7 @@ exports.requestOtp = async (req, res) => {
       { sapId },
       { 
         sapId, 
-        email, 
+        email: cleanInputEmail, 
         otpHash, 
         expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes expiry
       },
@@ -55,7 +68,7 @@ exports.requestOtp = async (req, res) => {
     );
 
     // 7. Add job to Redis Queue for async email sending
-    await emailQueue.add('send-otp', { email, otp: plainOtp });
+    await emailQueue.add('send-otp', { email: cleanInputEmail, otp: plainOtp });
 
     res.status(200).json({ message: 'OTP sent to your email successfully.' });
 
