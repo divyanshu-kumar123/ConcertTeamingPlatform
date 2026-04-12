@@ -96,10 +96,10 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#F4F6FB] to-[#FDFDFE] p-4 font-sans">
+    <div className="min-h-screen flex flex-col items-center md:items-start justify-center bg-[url('/Pritam.jpeg')] bg-cover bg-center bg-no-repeat p-4 md:pl-32 md:pr-4 font-sans">
       
       {mode !== 'LOGIN' && (
-        <div className="flex items-center justify-center mb-8 w-full max-w-xs">
+        <div className="flex items-center justify-center mb-8 w-full max-w-xs md:ml-15">
           <div className="flex flex-col items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${mode === 'REGISTER_STEP_1' ? 'bg-violet-600 text-white' : 'bg-green-500 text-white'}`}>1</div>
             <span className="text-xs text-gray-500 mt-2 font-medium">Register</span>

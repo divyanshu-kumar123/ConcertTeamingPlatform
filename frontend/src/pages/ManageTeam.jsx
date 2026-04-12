@@ -4,7 +4,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import Loader from '../components/Loader/Loader';
 import Inbox from '../components/Inbox';
-import { Copy, Users, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { Copy, Users, AlertCircle, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 
 const ManageTeam = () => {
   const { user } = useSelector((state) => state.auth);
@@ -12,6 +12,7 @@ const ManageTeam = () => {
   const [teamData, setTeamData] = useState(null);
   const [receivedRequests, setReceivedRequests] = useState([]);
   const [inviteSapId, setInviteSapId] = useState('');
+  const [showCode, setShowCode] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -67,9 +68,22 @@ const ManageTeam = () => {
           className="flex items-center gap-3 px-6 py-3 bg-blue-50/50 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors group"
         >
           <span className="text-2xl font-bold text-blue-600 tracking-wider">
-            {teamData ? teamData._id.substring(0, 8).toUpperCase() : 'PENDING'}
+            {teamData ? (showCode ? teamData._id : '••••••••') : 'PENDING'}
           </span>
           <Copy size={20} className="text-blue-400 group-hover:text-blue-600 transition-colors" />
+          {showCode ? (
+            <Eye 
+              size={20} 
+              className="text-blue-400 group-hover:text-blue-600 transition-colors cursor-pointer" 
+              onClick={(e) => { e.stopPropagation(); setShowCode(false); }} 
+            />
+          ) : (
+            <EyeOff 
+              size={20} 
+              className="text-blue-400 group-hover:text-blue-600 transition-colors cursor-pointer" 
+              onClick={(e) => { e.stopPropagation(); setShowCode(true); }} 
+            />
+          )}
         </button>
         <p className="text-sm text-gray-500 mt-3">Share this code with others to join your team</p>
       </div>
