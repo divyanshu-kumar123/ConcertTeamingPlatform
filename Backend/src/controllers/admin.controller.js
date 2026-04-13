@@ -1,20 +1,24 @@
 const mongoose = require('mongoose'); 
 const exceljs = require('exceljs');
 const { User, Team, SeatingGroup } = require('../models');
-// @desc    Get all teams, solo employees, and seating capacities
-// @route   GET /api/admin/dashboard
-// @access  Private (Admin Only)
+
+// @desc    Get paginated teams with search, solo employees, and seating capacities
+// @route   GET /api/admin/dashboard?page=1&limit=10&search=...
 exports.getAdminDashboard = async (req, res) => {
   try {
-    // 1. Get seating groups
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const skip = (page - 1) * limit;
+
+    // 1. Get seating groups (Static data, load once)
     const seatingGroups = await SeatingGroup.find().sort({ name: 1 });
 
-    // 2. SCALABLE AGGREGATION: Get teams sorted by size
-    // We use aggregation to count members and sort at the DB level
-    const teams = await Team.aggregate([
+    // 2. ADVANCED AGGREGATION: Paginated Search & Count
+    const teamResults = await Team.aggregate([
       {
         $lookup: {
-          from: 'users', // Collection name for members
+          from: 'users',
           localField: 'members',
           foreignField: '_id',
           as: 'memberDetails'
@@ -28,40 +32,53 @@ exports.getAdminDashboard = async (req, res) => {
           as: 'groupDetails'
         }
       },
+      // SEARCH FILTER: Matches if Team ID or any Member SAP ID matches search query
       {
-        $addFields: {
-          memberCount: { $size: "$members" },
-          seatingGroup: { $arrayElemAt: ["$groupDetails", 0] }
+        $match: {
+          $or: [
+            { _id: mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.ObjectId(search) : null },
+            { "memberDetails.sapId": { $regex: search, $options: 'i' } },
+            { "memberDetails.name": { $regex: search, $options: 'i' } }
+          ]
         }
       },
-      { $sort: { memberCount: -1 } }, // Largest teams first
       {
-        $project: {
-          _id: 1,
-          members: {
-            $map: {
-              input: "$memberDetails",
-              as: "m",
-              in: { name: "$$m.name", sapId: "$$m.sapId", _id: "$$m._id" }
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [
+            { $addFields: { memberCount: { $size: "$members" }, seatingGroup: { $arrayElemAt: ["$groupDetails", 0] } } },
+            { $sort: { memberCount: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $project: {
+                _id: 1,
+                members: { $map: { input: "$memberDetails", as: "m", in: { name: "$$m.name", sapId: "$$m.sapId", _id: "$$m._id" } } },
+                seatingGroupId: "$seatingGroup"
+              }
             }
-          },
-          seatingGroupId: "$seatingGroup"
+          ]
         }
       }
     ]);
 
-    // 3. Get solo employees
-    const soloEmployees = await User.find({ teamId: null, role: 'EMPLOYEE', isVerified: true })
-      .select('name sapId seatingGroupId')
-      .populate('seatingGroupId', 'name');
+    const teams = teamResults[0].data;
+    const totalTeams = teamResults[0].metadata[0]?.total || 0;
+
+    // 3. Get solo employees (Keep this lightweight)
+    const soloEmployeesCount = await User.countDocuments({ teamId: null, role: 'EMPLOYEE', isVerified: true });
 
     res.status(200).json({
       seatingGroups,
       teams,
-      soloEmployees,
+      pagination: {
+        totalTeams,
+        currentPage: page,
+        totalPages: Math.ceil(totalTeams / limit)
+      },
       summary: {
-        totalTeams: teams.length,
-        totalSoloEmployees: soloEmployees.length
+        totalTeams, // Current filtered count
+        totalSoloEmployees: soloEmployeesCount
       }
     });
   } catch (error) {
@@ -69,7 +86,6 @@ exports.getAdminDashboard = async (req, res) => {
     res.status(500).json({ message: 'Server error loading admin dashboard.' });
   }
 };
-
 // @desc    Manually assign a team to a seating group
 // @route   POST /api/admin/assign-team
 // @access  Private (Admin Only)

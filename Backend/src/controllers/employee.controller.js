@@ -37,28 +37,25 @@ exports.getDashboardData = async (req, res) => {
 
 
 
-// @desc    Search employees by name or SAP ID
+// @desc    Search ONLY solo employees by name or SAP ID
 // @route   GET /api/employees/search?query=...
-// @access  Private (Requires Token)
 exports.searchEmployees = async (req, res) => {
   try {
     const { query } = req.query;
 
-    // PRO-TIP: Return an empty array instead of a 400 error. 
-    // If you return 400, the frontend will flash an error toast every time the user clears the search box!
     if (!query || query.length < 3) {
       return res.status(200).json([]);
     }
 
-    // Use a case-insensitive regex for "typeahead" partial matching
     const regex = new RegExp(query, 'i');
     
     const employees = await User.find({
-      _id: { $ne: req.user._id }, // PERFECT: Do NOT return the logged-in user
+      _id: { $ne: req.user._id }, 
       role: 'EMPLOYEE',
+      teamId: null, 
       $or: [{ name: regex }, { sapId: regex }]
     })
-    .select('_id name sapId teamId') // Explicitly include _id because React needs it for the 'key' prop
+    .select('_id name sapId teamId') 
     .limit(10); 
 
     res.status(200).json(employees);

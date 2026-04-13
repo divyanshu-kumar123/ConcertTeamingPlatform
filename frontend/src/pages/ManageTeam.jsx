@@ -25,7 +25,7 @@ const ManageTeam = () => {
   // Data States
   const [teamData, setTeamData] = useState(null);
   const [receivedRequests, setReceivedRequests] = useState([]);
-  const [sentRequests, setSentRequests] = useState([]); // <-- Added this
+  const [sentRequests, setSentRequests] = useState([]);
   const [showCode, setShowCode] = useState(false);
 
   // Live Search States
@@ -39,7 +39,7 @@ const ManageTeam = () => {
       const res = await api.get("/employees/me");
       setTeamData(res.data.team);
       setReceivedRequests(res.data.receivedInvitations || []);
-      setSentRequests(res.data.sentInvitations || []); // <-- Populating sent requests
+      setSentRequests(res.data.sentInvitations || []);
     } catch (error) {
       toast.error("Failed to load team data");
     } finally {
@@ -51,7 +51,7 @@ const ManageTeam = () => {
     fetchData();
   }, []);
 
-  // --- DEBOUNCED SEARCH LOGIC ---
+  // --- DEBOUNCED SEARCH LOGIC (Solo Only) ---
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (inviteQuery.trim().length < 3) {
@@ -63,6 +63,7 @@ const ManageTeam = () => {
         const res = await api.get(
           `/employees/search?query=${inviteQuery.trim()}`,
         );
+        // Backend already filters solo, but we double-check local members
         const filtered = res.data.filter(
           (emp) =>
             emp._id !== user.id &&
@@ -92,14 +93,13 @@ const ManageTeam = () => {
         targetId: targetSapId,
       });
       toast.success(res.data.message);
-      fetchData(); // <-- Refresh instantly to show in Sent Requests below
+      fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to send invite");
       setLoading(false);
     }
   };
 
-  // --- NEW: Remove Sent Request Logic ---
   const handleRemoveRequest = async (requestId, isRejected = false) => {
     setLoading(true);
     try {
@@ -115,7 +115,6 @@ const ManageTeam = () => {
   };
 
   const handleLeaveTeam = async () => {
-    // Best Practice: Destructive actions should always require confirmation
     const confirmLeave = window.confirm(
       "Are you sure you want to leave this team? If you are the last member, the team will be deleted.",
     );
@@ -126,8 +125,6 @@ const ManageTeam = () => {
     try {
       const res = await api.post("/teams/leave");
       toast.success(res.data.message);
-
-      // Redirect to dashboard since they no longer have a team to manage
       navigate("/dashboard");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to leave team");
@@ -153,7 +150,7 @@ const ManageTeam = () => {
     );
 
   return (
-    <div className="max-w-5xl mx-auto w-full pb-12">
+    <div className="max-w-5xl mx-auto w-full pb-12 px-4">
       {/* Top Banner: Team Code */}
       <div className="flex flex-col items-center justify-center mb-10 text-center">
         <p className="text-sm font-medium text-gray-500 mb-2">Your Team Code</p>
@@ -206,7 +203,7 @@ const ManageTeam = () => {
             </div>
           </div>
 
-          {/* Live Search Invite Form */}
+          {/* Live Search Invite Form - Updated Placeholder */}
           <div className="relative mb-6">
             <div className="flex gap-2 relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -214,7 +211,7 @@ const ManageTeam = () => {
               </div>
               <input
                 type="text"
-                placeholder="Search to invite members..."
+                placeholder="Invite solo employees..."
                 value={inviteQuery}
                 onChange={(e) => {
                   setInviteQuery(e.target.value);
@@ -226,12 +223,11 @@ const ManageTeam = () => {
               />
             </div>
 
-            {/* Dropdown Suggestions */}
             {showDropdown && inviteQuery.length >= 3 && (
               <div className="absolute z-10 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden max-h-60 overflow-y-auto">
                 {isSearching ? (
                   <div className="p-4 text-center text-sm text-gray-500">
-                    Searching...
+                    Searching individuals...
                   </div>
                 ) : suggestions.length > 0 ? (
                   suggestions.map((emp) => (
@@ -254,71 +250,46 @@ const ManageTeam = () => {
                   ))
                 ) : (
                   <div className="p-4 text-center text-sm text-gray-500">
-                    No employees found.
+                    No solo employees found.
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Members List */}
+          {/* Members List - Removed Owner Badge */}
           <div className="space-y-4">
-            {teamData ? (
-              teamData.members.map((member) => (
-                <div
-                  key={member._id}
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold shadow-sm">
-                      {getInitial(member.name)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {member.name}
-                      </p>
-                      <p className="text-xs text-gray-500 uppercase">
-                        {member.sapId}
-                      </p>
-                    </div>
+            {teamData?.members.map((member) => (
+              <div
+                key={member._id}
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold shadow-sm">
+                    {getInitial(member.name)}
                   </div>
-                  {member._id === user.id && (
-                    <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-full">
-                      Owner
-                    </span>
-                  )}
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {member.name}
+                    </p>
+                    <p className="text-xs text-gray-500 uppercase">
+                      {member.sapId}
+                    </p>
+                  </div>
                 </div>
-              ))
-            ) : (
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                <div className="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold">
-                  {getInitial(user.name)}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {user.name}
-                  </p>
-                  <p className="text-xs text-gray-500 uppercase">
-                    {user.sapId}
-                  </p>
-                </div>
-                <span className="ml-auto px-3 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-full">
-                  Owner
-                </span>
               </div>
-            )}
+            ))}
           </div>
         </div>
 
-        {/* RIGHT COLUMN: The Inbox Component */}
         <div>
           <Inbox requests={receivedRequests} onRefresh={fetchData} />
         </div>
       </div>
 
-      {/* --- SENT REQUESTS HISTORY SECTION --- */}
+      {/* --- SENT REQUESTS HISTORY --- */}
       {sentRequests && sentRequests.length > 0 && (
-        <div className="mb-8 bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] animate-fade-in-up">
+        <div className="mb-8 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm animate-fade-in-up">
           <h3 className="text-lg font-bold text-gray-900 mb-4">
             Pending & Past Invites
           </h3>
@@ -326,7 +297,7 @@ const ManageTeam = () => {
             {sentRequests.map((req) => (
               <div
                 key={req._id}
-                className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-gray-200"
+                className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex items-center justify-between gap-4 transition-all hover:border-gray-200"
               >
                 <div className="flex items-center gap-3">
                   {req.status === "PENDING" ? (
@@ -340,15 +311,10 @@ const ManageTeam = () => {
                   )}
                   <div>
                     <h4 className="text-sm font-bold text-gray-900">
-                      {req.receiverId?.name || "Unknown Colleague"}
+                      {req.receiverId?.name || "Unknown"}
                     </h4>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      SAP: {req.receiverId?.sapId} •
-                      <span
-                        className={`ml-1 font-semibold ${req.status === "PENDING" ? "text-amber-600" : "text-red-600"}`}
-                      >
-                        {req.status}
-                      </span>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">
+                      SAP: {req.receiverId?.sapId} • {req.status}
                     </p>
                   </div>
                 </div>
@@ -356,7 +322,7 @@ const ManageTeam = () => {
                   onClick={() =>
                     handleRemoveRequest(req._id, req.status === "REJECTED")
                   }
-                  className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-red-50 hover:border-red-100 hover:text-red-600 text-gray-600 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shadow-sm"
+                  className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-red-50 text-gray-600 text-[10px] font-bold rounded-lg transition-colors"
                 >
                   {req.status === "PENDING" ? "Withdraw" : "Clear"}
                 </button>
@@ -373,15 +339,15 @@ const ManageTeam = () => {
             <AlertCircle size={24} />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-gray-900">Team Management</h4>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Leaving the team will remove you from the team. You need to request again if you want to join the team again
+            <h4 className="text-sm font-bold text-gray-900">Leave Team</h4>
+            <p className="text-xs text-gray-500 mt-0.5">
+              You will be removed from the team instantly. You must be invited again to re-join.
             </p>
           </div>
         </div>
         <button
           onClick={handleLeaveTeam}
-          className="px-6 py-2.5 bg-[#E11D48] hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm shadow-red-200 whitespace-nowrap"
+          className="px-6 py-2.5 bg-[#E11D48] hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
         >
           Leave Team
         </button>

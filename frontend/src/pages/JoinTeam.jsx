@@ -23,8 +23,10 @@ const JoinTeam = () => {
   const fetchData = async () => {
     try {
       const res = await api.get('/employees/me');
-      setReceivedRequests(res.data.receivedInvitations);
-      setPendingOutgoingRequest(res.data.outgoingRequest || null);
+      setReceivedRequests(res.data.receivedInvitations || []);
+      // Ensure we check for any pending sent invitations
+      const outgoing = res.data.sentInvitations?.find(inv => inv.status === 'PENDING');
+      setPendingOutgoingRequest(outgoing || null);
     } catch (error) {
       toast.error('Failed to load data');
     } finally {
@@ -36,7 +38,7 @@ const JoinTeam = () => {
     fetchData();
   }, []);
 
-  // --- DEBOUNCED SEARCH LOGIC ---
+  // --- DEBOUNCED SEARCH LOGIC (Solo Only) ---
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (searchQuery.trim().length < 3) {
@@ -46,6 +48,7 @@ const JoinTeam = () => {
       setIsSearching(true);
       try {
         const res = await api.get(`/employees/search?query=${searchQuery.trim()}`);
+        // Backend now strictly returns users with teamId: null
         setSuggestions(res.data);
       } catch (error) {
         console.error('Search failed', error);
@@ -68,22 +71,22 @@ const JoinTeam = () => {
     try {
       const res = await api.post('/invitations/send', { targetId: targetSapId });
       toast.success(res.data.message);
-      setPendingOutgoingRequest({ _id: 'temp_id', target: targetSapId }); 
+      fetchData(); // Refresh to set pending state
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to send join request');
-    } finally {
+      toast.error(error.response?.data?.message || 'Failed to send request');
       setLoading(false);
     }
   };
 
   const handleWithdrawRequest = async () => {
+    if (!pendingOutgoingRequest) return;
     setLoading(true);
     try {
-      toast.success('Request withdrawn successfully.');
+      await api.delete(`/invitations/${pendingOutgoingRequest._id}`);
+      toast.success('Request withdrawn.');
       setPendingOutgoingRequest(null);
     } catch (error) {
-      toast.success('Request withdrawn (Local State).');
-      setPendingOutgoingRequest(null);
+      toast.error('Failed to withdraw.');
     } finally {
       setLoading(false);
     }
@@ -94,12 +97,12 @@ const JoinTeam = () => {
   if (loading && !receivedRequests.length && !pendingOutgoingRequest) return <div className="flex justify-center py-20"><Loader /></div>;
 
   return (
-    <div className="max-w-3xl mx-auto w-full pb-12">
+    <div className="max-w-3xl mx-auto w-full pb-12 px-4">
       
-      {/* Page Header */}
+      {/* Page Header - Updated to emphasize individuals */}
       <div className="text-center mb-10">
-        <h2 className="text-2xl font-bold text-gray-900">Join a Team</h2>
-        <p className="text-sm text-gray-500 mt-1">Search for a colleague by Name or SAP ID to join them</p>
+        <h2 className="text-2xl font-bold text-gray-900">Find Teammates</h2>
+        <p className="text-sm text-gray-500 mt-1">Search for a solo colleague to start a team</p>
       </div>
 
       <div className="mb-12">
@@ -110,28 +113,28 @@ const JoinTeam = () => {
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
               <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">Request Pending</h3>
-                <p className="text-sm text-gray-500">You have a pending join request. Wait for the team owner to accept it.</p>
+                <p className="text-sm text-gray-500">You've requested to join a colleague. Wait for them to accept.</p>
               </div>
               <button 
                 onClick={handleWithdrawRequest}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 hover:text-red-600 text-gray-700 text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 hover:text-red-600 text-gray-700 text-sm font-semibold rounded-lg transition-colors shadow-sm"
               >
-                <X size={16} /> Withdraw Request
+                <X size={16} /> Withdraw
               </button>
             </div>
           </div>
 
         ) : (
           
-          /* --- LIVE SEARCH FORM --- */
+          /* --- LIVE SEARCH FORM - Updated Placeholder --- */
           <div className="max-w-xl mx-auto relative">
-            <div className="relative flex items-center shadow-[0_2px_10px_rgb(0,0,0,0.03)] rounded-2xl transition-shadow focus-within:shadow-[0_8px_30px_rgb(0,0,0,0.08)] bg-white border border-gray-100 z-20">
+            <div className="relative flex items-center shadow-sm rounded-2xl bg-white border border-gray-100 z-20 focus-within:ring-2 focus-within:ring-violet-500/20 transition-all">
               <div className="absolute left-4 text-gray-400">
                 <Search size={20} />
               </div>
               <input 
                 type="text" 
-                placeholder="Type a Name or SAP ID..." 
+                placeholder="Search solo colleagues by Name or SAP..." 
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -143,19 +146,17 @@ const JoinTeam = () => {
               />
             </div>
 
-            {/* Dropdown Suggestions */}
             {showDropdown && searchQuery.length >= 3 && (
-              <div className="absolute z-30 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-[0_10px_40px_rgb(0,0,0,0.1)] overflow-hidden max-h-80 overflow-y-auto">
+              <div className="absolute z-30 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden max-h-80 overflow-y-auto">
                 {isSearching ? (
-                  <div className="p-6 text-center text-sm text-gray-500">Searching directory...</div>
+                  <div className="p-6 text-center text-sm text-gray-500 font-medium">Searching solo members...</div>
                 ) : suggestions.length > 0 ? (
                   <div className="p-2">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 mb-2 mt-2">Employees</p>
                     {suggestions.map((emp) => (
                       <div 
                         key={emp._id}
                         onMouseDown={() => handleSelectAndRequest(emp.sapId)}
-                        className="flex items-center justify-between p-3 hover:bg-gray-50 cursor-pointer rounded-xl transition-colors"
+                        className="flex items-center justify-between p-3 hover:bg-violet-50 cursor-pointer rounded-xl transition-colors group"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold">
@@ -163,17 +164,15 @@ const JoinTeam = () => {
                           </div>
                           <div>
                             <p className="text-sm font-bold text-gray-900">{emp.name}</p>
-                            <p className="text-xs text-gray-500">SAP: {emp.sapId}</p>
+                            <p className="text-xs text-gray-400 font-bold">SAP: {emp.sapId}</p>
                           </div>
                         </div>
-                        <span className="flex items-center gap-1 text-sm font-semibold text-violet-600 bg-violet-50 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                          Send Request <ArrowRight size={14} />
-                        </span>
+                        <ArrowRight size={16} className="text-violet-400 group-hover:translate-x-1 transition-transform" />
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-sm text-gray-500">No matching employees found.</div>
+                  <div className="p-6 text-center text-sm text-gray-500 italic">No solo employees found.</div>
                 )}
               </div>
             )}
@@ -182,13 +181,12 @@ const JoinTeam = () => {
         )}
       </div>
 
-      {/* Received Requests Section */}
       {receivedRequests && receivedRequests.length > 0 && (
-        <div className="max-w-2xl mx-auto animate-fade-in-up">
+        <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-gray-200"></div>
-            <p className="text-sm font-medium text-gray-400 uppercase tracking-widest">Or Handle Invites</p>
-            <div className="flex-1 h-px bg-gray-200"></div>
+            <div className="flex-1 h-px bg-gray-100"></div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Incoming Invitations</p>
+            <div className="flex-1 h-px bg-gray-100"></div>
           </div>
           <Inbox requests={receivedRequests} onRefresh={fetchData} />
         </div>

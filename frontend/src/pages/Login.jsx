@@ -96,7 +96,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center md:items-start justify-center bg-[url('/Pritam.jpeg')] bg-cover bg-center bg-no-repeat p-4 md:pl-32 md:pr-4 font-sans">
+    <div className="min-h-screen flex flex-col items-center md:items-start justify-center bg-[url('/Pritam1.jpeg')] bg-cover bg-center bg-no-repeat p-4 md:pl-32 md:pr-4 font-sans">
       
       {mode !== 'LOGIN' && (
         <div className="flex items-center justify-center mb-8 w-full max-w-xs md:ml-15">
