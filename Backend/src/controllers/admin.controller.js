@@ -1,25 +1,56 @@
 const mongoose = require('mongoose'); 
 const exceljs = require('exceljs');
 const { User, Team, SeatingGroup } = require('../models');
-
 // @desc    Get all teams, solo employees, and seating capacities
 // @route   GET /api/admin/dashboard
 // @access  Private (Admin Only)
 exports.getAdminDashboard = async (req, res) => {
   try {
-    // 1. Get all seating groups (A through H)
+    // 1. Get seating groups
     const seatingGroups = await SeatingGroup.find().sort({ name: 1 });
 
-    // 2. Get all teams (populated with their members)
-    // We sort them by the number of members (largest teams first)
-    const teams = await Team.find()
-      .populate('members', 'name sapId')
-      .populate('seatingGroupId', 'name');
+    // 2. SCALABLE AGGREGATION: Get teams sorted by size
+    // We use aggregation to count members and sort at the DB level
+    const teams = await Team.aggregate([
+      {
+        $lookup: {
+          from: 'users', // Collection name for members
+          localField: 'members',
+          foreignField: '_id',
+          as: 'memberDetails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'seatinggroups',
+          localField: 'seatingGroupId',
+          foreignField: '_id',
+          as: 'groupDetails'
+        }
+      },
+      {
+        $addFields: {
+          memberCount: { $size: "$members" },
+          seatingGroup: { $arrayElemAt: ["$groupDetails", 0] }
+        }
+      },
+      { $sort: { memberCount: -1 } }, // Largest teams first
+      {
+        $project: {
+          _id: 1,
+          members: {
+            $map: {
+              input: "$memberDetails",
+              as: "m",
+              in: { name: "$$m.name", sapId: "$$m.sapId", _id: "$$m._id" }
+            }
+          },
+          seatingGroupId: "$seatingGroup"
+        }
+      }
+    ]);
 
-    // Sort teams in memory (largest first) since MongoDB doesn't easily sort by array length
-    teams.sort((a, b) => b.members.length - a.members.length);
-
-    // 3. Get all solo employees (users who are not in any team and are not admins)
+    // 3. Get solo employees
     const soloEmployees = await User.find({ teamId: null, role: 'EMPLOYEE', isVerified: true })
       .select('name sapId seatingGroupId')
       .populate('seatingGroupId', 'name');
@@ -234,5 +265,35 @@ exports.exportSeatingData = async (req, res) => {
   } catch (error) {
     console.error('Export Error:', error);
     res.status(500).json({ message: 'Server error generating Excel file.' });
+  }
+};
+
+
+// @desc    Get detailed occupancy for a specific seating group
+// @route   GET /api/admin/groups/:id/occupants
+// @access  Private (Admin Only)
+exports.getGroupOccupants = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Get Teams in this group
+    const teams = await Team.find({ seatingGroupId: id })
+      .populate('members', 'name sapId');
+
+    // 2. Get Solo Employees in this group
+    const soloEmployees = await User.find({ 
+      seatingGroupId: id, 
+      teamId: null, 
+      role: 'EMPLOYEE' 
+    }).select('name sapId');
+
+    res.status(200).json({
+      teams,
+      soloEmployees,
+      totalCount: (teams.reduce((acc, t) => acc + t.members.length, 0)) + soloEmployees.length
+    });
+  } catch (error) {
+    console.error('Group Occupants Error:', error);
+    res.status(500).json({ message: 'Error fetching group details.' });
   }
 };

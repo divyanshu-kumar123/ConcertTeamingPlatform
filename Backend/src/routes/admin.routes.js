@@ -3,7 +3,8 @@ const {
   getAdminDashboard, 
   assignTeamToGroup, 
   autoAllocateSeats,
-  exportSeatingData  
+  exportSeatingData,
+  getGroupOccupants
 } = require('../controllers/admin.controller');
 const { protect, adminOnly } = require('../middlewares/auth.middleware');
 
@@ -16,5 +17,6 @@ router.get('/dashboard', getAdminDashboard);
 router.post('/assign-team', assignTeamToGroup);
 router.post('/auto-allocate', autoAllocateSeats);
 router.get('/export', exportSeatingData);
+router.get('/groups/:id/occupants', getGroupOccupants);
 
 module.exports = router;
