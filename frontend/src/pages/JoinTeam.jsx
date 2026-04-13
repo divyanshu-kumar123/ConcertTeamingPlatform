@@ -4,7 +4,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import Loader from '../components/Loader/Loader';
 import Inbox from '../components/Inbox';
-import { Search, X, ArrowRight } from 'lucide-react';
+import { Search, X, ArrowRight, Users } from 'lucide-react';
 
 const JoinTeam = () => {
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ const JoinTeam = () => {
     fetchData();
   }, []);
 
-  // --- DEBOUNCED SEARCH LOGIC (Solo Only) ---
+  // --- DEBOUNCED SEARCH LOGIC (Teams Only) ---
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (searchQuery.trim().length < 3) {
@@ -47,8 +47,8 @@ const JoinTeam = () => {
       }
       setIsSearching(true);
       try {
-        const res = await api.get(`/employees/search?query=${searchQuery.trim()}`);
-        // Backend now strictly returns users with teamId: null
+        // CHANGED: Now points to the new dedicated search-teams endpoint
+        const res = await api.get(`/employees/search-teams?query=${searchQuery.trim()}`);
         setSuggestions(res.data);
       } catch (error) {
         console.error('Search failed', error);
@@ -69,7 +69,7 @@ const JoinTeam = () => {
     setShowDropdown(false);
     setLoading(true);
     try {
-      const res = await api.post('/invitations/send', { targetId: targetSapId });
+      const res = await api.post('/invitations/join-team', { targetId: targetSapId });
       toast.success(res.data.message);
       fetchData(); // Refresh to set pending state
     } catch (error) {
@@ -99,10 +99,10 @@ const JoinTeam = () => {
   return (
     <div className="max-w-3xl mx-auto w-full pb-12 px-4">
       
-      {/* Page Header - Updated to emphasize individuals */}
+      {/* Page Header - Updated to emphasize Teams */}
       <div className="text-center mb-10">
-        <h2 className="text-2xl font-bold text-gray-900">Find Teammates</h2>
-        <p className="text-sm text-gray-500 mt-1">Search for a solo colleague to start a team</p>
+        <h2 className="text-2xl font-bold text-gray-900">Find a Team to Join</h2>
+        <p className="text-sm text-gray-500 mt-1">Search by member name, SAP ID, or exact Team Code</p>
       </div>
 
       <div className="mb-12">
@@ -113,7 +113,7 @@ const JoinTeam = () => {
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
               <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">Request Pending</h3>
-                <p className="text-sm text-gray-500">You've requested to join a colleague. Wait for them to accept.</p>
+                <p className="text-sm text-gray-500">You've requested to join a team. Wait for them to accept.</p>
               </div>
               <button 
                 onClick={handleWithdrawRequest}
@@ -134,7 +134,7 @@ const JoinTeam = () => {
               </div>
               <input 
                 type="text" 
-                placeholder="Search solo colleagues by Name or SAP..." 
+                placeholder="Search teams by Name, SAP, or Team Code..." 
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -149,7 +149,7 @@ const JoinTeam = () => {
             {showDropdown && searchQuery.length >= 3 && (
               <div className="absolute z-30 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden max-h-80 overflow-y-auto">
                 {isSearching ? (
-                  <div className="p-6 text-center text-sm text-gray-500 font-medium">Searching solo members...</div>
+                  <div className="p-6 text-center text-sm text-gray-500 font-medium">Searching existing teams...</div>
                 ) : suggestions.length > 0 ? (
                   <div className="p-2">
                     {suggestions.map((emp) => (
@@ -159,20 +159,27 @@ const JoinTeam = () => {
                         className="flex items-center justify-between p-3 hover:bg-violet-50 cursor-pointer rounded-xl transition-colors group"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold">
+                          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold">
                             {getInitial(emp.name)}
                           </div>
                           <div>
                             <p className="text-sm font-bold text-gray-900">{emp.name}</p>
-                            <p className="text-xs text-gray-400 font-bold">SAP: {emp.sapId}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-gray-400 font-bold">SAP: {emp.sapId}</p>
+                              <span className="flex items-center gap-1 text-[9px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded font-black uppercase">
+                                <Users size={10} /> In Team
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <ArrowRight size={16} className="text-violet-400 group-hover:translate-x-1 transition-transform" />
+                        <span className="text-[10px] font-black text-violet-600 opacity-0 group-hover:opacity-100 uppercase tracking-tighter transition-opacity">
+                          Request to Join →
+                        </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-sm text-gray-500 italic">No solo employees found.</div>
+                  <div className="p-6 text-center text-sm text-gray-500 italic">No matching teams or members found.</div>
                 )}
               </div>
             )}

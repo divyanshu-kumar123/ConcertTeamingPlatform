@@ -1,4 +1,6 @@
 const { User, Team, Invitation } = require('../models');
+const mongoose = require('mongoose');
+
 
 // @desc    Get current user profile, team, and invites
 // @route   GET /api/employees/me
@@ -62,5 +64,41 @@ exports.searchEmployees = async (req, res) => {
   } catch (error) {
     console.error('Search Error:', error);
     res.status(500).json({ message: 'Server error during search.' });
+  }
+};
+
+
+// @desc    Search ONLY for existing teams (by member name, SAP ID, or exact Team Code)
+// @route   GET /api/employees/search-teams?query=...
+// @access  Private
+exports.searchTeamsToJoin = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.length < 3) {
+      return res.status(200).json([]);
+    }
+
+    const regex = new RegExp(query, 'i');
+    const isQueryObjectId = mongoose.Types.ObjectId.isValid(query);
+
+    const employees = await User.find({
+      _id: { $ne: req.user._id }, // Don't return the logged-in user
+      role: 'EMPLOYEE',
+      teamId: { $ne: null }, // CRITICAL RULE: Only return people who ARE in a team
+      $or: [
+        { name: regex },
+        { sapId: regex },
+        // If they paste an exact 24-char Team Code, it will find members of that team
+        ...(isQueryObjectId ? [{ teamId: query }] : [])
+      ]
+    })
+    .select('_id name sapId teamId') // MUST USE SPACES, NO COMMAS
+    .limit(10);
+
+    res.status(200).json(employees);
+  } catch (error) {
+    console.error('Search Teams Error:', error);
+    res.status(500).json({ message: 'Server error during team search.' });
   }
 };

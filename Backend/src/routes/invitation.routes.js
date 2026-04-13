@@ -1,5 +1,5 @@
 const express = require('express');
-const { sendInvitation, acceptInvitation, rejectInvitation, deleteInvitation } = require('../controllers/invitation.controller');
+const { sendInvitation, acceptInvitation, rejectInvitation, deleteInvitation, requestToJoinTeam } = require('../controllers/invitation.controller');
 const { protect } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(protect);
 
 router.post('/send', sendInvitation);
+router.post('/join-team', requestToJoinTeam);
 router.post('/accept/:id', acceptInvitation);
 router.post('/reject/:id', rejectInvitation);
 router.delete('/:id', deleteInvitation);

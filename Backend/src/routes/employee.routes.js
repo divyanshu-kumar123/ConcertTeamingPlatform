@@ -1,5 +1,5 @@
 const express = require('express');
-const { getDashboardData, searchEmployees } = require('../controllers/employee.controller');
+const { getDashboardData, searchEmployees, searchTeamsToJoin } = require('../controllers/employee.controller');
 const { protect } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
@@ -9,5 +9,6 @@ router.use(protect);
 
 router.get('/me', getDashboardData);
 router.get('/search', searchEmployees);
+router.get('/search-teams', searchTeamsToJoin);
 
 module.exports = router;

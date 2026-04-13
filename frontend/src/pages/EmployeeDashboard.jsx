@@ -85,7 +85,7 @@ const EmployeeDashboard = () => {
           <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-6 group-hover:scale-110 transition-transform">
             <Users size={24} />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Create Team</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Create or Manage Team</h3>
           <p className="text-sm text-gray-500 mb-8 min-h-[40px]">
             Start a new team and invite others to join
           </p>

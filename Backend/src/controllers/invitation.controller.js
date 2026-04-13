@@ -180,3 +180,54 @@ exports.deleteInvitation = async (req, res) => {
     res.status(500).json({ message: 'Server error removing request.' });
   }
 };
+
+// @desc    Solo employee requests to join an existing team
+// @route   POST /api/invitations/join-team
+// @access  Private
+exports.requestToJoinTeam = async (req, res) => {
+  try {
+    const { targetId } = req.body; 
+    const senderId = req.user._id;
+
+    if (!targetId) return res.status(400).json({ message: 'Target ID is required.' });
+
+    const sender = await User.findById(senderId);
+    
+    // STRICT RULE 1: The sender MUST be a solo employee.
+    if (sender.teamId) {
+      return res.status(400).json({ message: 'You are already in a team. You cannot join another.' });
+    }
+
+    const receiver = await User.findOne({ 
+      sapId: targetId.toUpperCase(), 
+      role: 'EMPLOYEE' 
+    });
+
+    if (!receiver) return res.status(404).json({ message: 'Employee not found.' });
+
+    // STRICT RULE 2: The receiver MUST be part of a team.
+    if (!receiver.teamId) {
+      return res.status(400).json({ message: 'This person is not in a team. Please use the standard invite feature.' });
+    }
+
+    // Check for existing pending requests between these two users
+    const existingInvite = await Invitation.findOne({
+      $or: [
+        { senderId, receiverId: receiver._id, status: 'PENDING' },
+        { senderId: receiver._id, receiverId: senderId, status: 'PENDING' }
+      ]
+    });
+
+    if (existingInvite) {
+      return res.status(400).json({ message: 'A pending request already exists between you and this user.' });
+    }
+
+    // Create the invitation
+    const invitation = await Invitation.create({ senderId, receiverId: receiver._id });
+    
+    res.status(201).json({ message: 'Request to join the team sent successfully!', invitation });
+  } catch (error) {
+    console.error('Join Team Request Error:', error);
+    res.status(500).json({ message: 'Server error sending join request.' });
+  }
+};
