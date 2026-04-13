@@ -219,3 +219,37 @@ exports.rejectInvitation = async (req, res) => {
     res.status(500).json({ message: 'Server error rejecting invitation.' });
   }
 };
+
+
+// @desc    Withdraw a pending invite or clear a rejected invite
+// @route   DELETE /api/invitations/:id
+// @access  Private
+exports.deleteInvitation = async (req, res) => {
+  try {
+    const invitationId = req.params.id;
+    const userId = req.user._id || req.user.id; // Support both token extraction styles
+
+    // 1. Validate the ID format to prevent Mongoose crashes
+    if (!mongoose.Types.ObjectId.isValid(invitationId)) {
+      return res.status(400).json({ message: 'Invalid invitation ID format.' });
+    }
+
+    // 2. Find and delete the invitation ONLY if the logged-in user is the sender
+    const invitation = await Invitation.findOneAndDelete({
+      _id: invitationId,
+      senderId: userId
+    });
+
+    if (!invitation) {
+      return res.status(404).json({ 
+        message: 'Invitation not found, or you do not have permission to delete it.' 
+      });
+    }
+
+    res.status(200).json({ message: 'Request removed successfully.' });
+    
+  } catch (error) {
+    console.error('Delete Invite Error:', error);
+    res.status(500).json({ message: 'Server error removing the request.' });
+  }
+};

@@ -45,14 +45,12 @@ const seedDatabase = async () => {
 
     console.log('Creating Seating Groups...');
     const groups = [
-      { name: 'A', capacity: 1000 },
-      { name: 'B', capacity: 1000 },
-      { name: 'C', capacity: 1000 },
-      { name: 'D', capacity: 1000 },
-      { name: 'E', capacity: 1000 },
-      { name: 'F', capacity: 1000 },
-      { name: 'G', capacity: 500 },
-      { name: 'H', capacity: 500 },
+      { name: 'A', capacity: 1200 },
+      { name: 'B', capacity: 1200 },
+      { name: 'C', capacity: 1200 },
+      { name: 'D', capacity: 1200 },
+      { name: 'E', capacity: 1200 },
+      { name: 'F', capacity: 1200 }
     ];
     await SeatingGroup.insertMany(groups);
 
@@ -73,6 +71,27 @@ const seedDatabase = async () => {
 
     console.log('Generating 100 Dummy Employees...');
     const dummyEmployees = [];
+    dummyEmployees.push({
+      sapId: '52111453',
+      name: 'Divyanshu',
+      email: 'divyanshu-kumar@hcltech.com',
+      role: 'EMPLOYEE',
+      isVerified: false
+    })
+    dummyEmployees.push({
+      sapId: '51695026',
+      name: 'Vishal Dixit',
+      email: 'vishal-d@hcltech.com',
+      role: 'EMPLOYEE',
+      isVerified: false
+    })
+    dummyEmployees.push({
+      sapId: '51366014',
+      name: 'Chandini Kamal',
+      email: 'chandini-k@hcltech.com',
+      role: 'EMPLOYEE',
+      isVerified: false
+    })
     
     for (let i = 0; i < 100; i++) {
       const firstName = faker.person.firstName();

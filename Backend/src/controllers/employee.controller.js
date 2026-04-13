@@ -11,9 +11,11 @@ exports.getDashboardData = async (req, res) => {
     const receivedInvitations = await Invitation.find({ receiverId: userId, status: 'PENDING' })
       .populate('senderId', 'name sapId'); // Bring in the sender's details
 
-    // 2. Get pending sent invitations
-    const sentInvitations = await Invitation.find({ senderId: userId, status: 'PENDING' })
-      .populate('receiverId', 'name sapId'); // Bring in the receiver's details
+// 2. Get pending and rejected sent invitations
+    const sentInvitations = await Invitation.find({ 
+      senderId: userId, 
+      status: { $in: ['PENDING', 'REJECTED'] } 
+    }).populate('receiverId', 'name sapId');
 
     // 3. Get Team info if they belong to one
     let team = null;
@@ -33,6 +35,8 @@ exports.getDashboardData = async (req, res) => {
   }
 };
 
+
+
 // @desc    Search employees by name or SAP ID
 // @route   GET /api/employees/search?query=...
 // @access  Private (Requires Token)
@@ -40,20 +44,22 @@ exports.searchEmployees = async (req, res) => {
   try {
     const { query } = req.query;
 
-    if (!query) {
-      return res.status(400).json({ message: 'Search query is required.' });
+    // PRO-TIP: Return an empty array instead of a 400 error. 
+    // If you return 400, the frontend will flash an error toast every time the user clears the search box!
+    if (!query || query.length < 3) {
+      return res.status(200).json([]);
     }
 
     // Use a case-insensitive regex for "typeahead" partial matching
     const regex = new RegExp(query, 'i');
     
     const employees = await User.find({
-      _id: { $ne: req.user._id }, // Do NOT return the logged-in user in their own search
+      _id: { $ne: req.user._id }, // PERFECT: Do NOT return the logged-in user
       role: 'EMPLOYEE',
       $or: [{ name: regex }, { sapId: regex }]
     })
-    .select('name sapId teamId') // Only send safe data to the frontend
-    .limit(10); // Limit to 10 results for performance
+    .select('_id name sapId teamId') // Explicitly include _id because React needs it for the 'key' prop
+    .limit(10); 
 
     res.status(200).json(employees);
   } catch (error) {

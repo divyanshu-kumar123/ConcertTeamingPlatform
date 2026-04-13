@@ -46,11 +46,13 @@ const authRoutes = require('./routes/auth.routes');
 const employeeRoutes = require('./routes/employee.routes');
 const invitationRoutes = require('./routes/invitation.routes');
 const adminRoutes = require('./routes/admin.routes');
+const teamRoutes = require('./routes/team.routes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/invitations', invitationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/teams', teamRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
